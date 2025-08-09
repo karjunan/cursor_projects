@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Testing Client - NestJS</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4CAF50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .btn.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .message.success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .message.error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .message.info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .message.broadcast { background: #e2d9f3; color: #6f42c1; border-left: 4px solid #6f42c1; }
+        .message.system { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+
+        .connection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .connection-item {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .connection-item.connected {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .connection-item.disconnected {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .api-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .api-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .api-endpoints {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .endpoint {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .endpoint-method {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .endpoint-url {
+            font-family: monospace;
+            background: #f1f3f4;
+            padding: 5px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔌 WebSocket Testing Client</h1>
+            <p>NestJS WebSocket Server with Multiple Connection Testing</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="connectionCount">0</div>
+                <div class="stat-label">Active Connections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="messageCount">0</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="testConnections">0</div>
+                <div class="stat-label">Test Connections</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Main Connection -->
+            <div class="card">
+                <h2>🔗 Main Connection</h2>
+                <div class="status-indicator">
+                    <div class="status-dot disconnected" id="mainStatus"></div>
+                    <span id="mainStatusText">Disconnected</span>
+                </div>
+                <div class="form-group">
+                    <label>Connection ID:</label>
+                    <input type="text" id="mainConnectionId" readonly>
+                </div>
+                <button class="btn" id="connectBtn">Connect</button>
+                <button class="btn danger" id="disconnectBtn" disabled>Disconnect</button>
+                <button class="btn warning" id="pingBtn" disabled>Send Ping</button>
+            </div>
+
+            <!-- Message Sending -->
+            <div class="card">
+                <h2>💬 Message Sending</h2>
+                <div class="form-group">
+                    <label>Message:</label>
+                    <input type="text" id="messageInput" placeholder="Type your message...">
+                </div>
+                <button class="btn" id="sendMessageBtn" disabled>Send Message</button>
+                <button class="btn success" id="broadcastBtn" disabled>Broadcast</button>
+            </div>
+
+            <!-- Multiple Connections -->
+            <div class="card">
+                <h2>🔄 Multiple Connections</h2>
+                <div class="form-group">
+                    <label>Number of Connections:</label>
+                    <input type="number" id="connectionCountInput" min="1" max="20" value="5">
+                </div>
+                <button class="btn" id="createConnectionsBtn">Create Connections</button>
+                <button class="btn danger" id="disconnectAllBtn" disabled>Disconnect All</button>
+                <button class="btn warning" id="pingAllBtn" disabled>Ping All</button>
+            </div>
+
+            <!-- Auto Testing -->
+            <div class="card">
+                <h2>🤖 Auto Testing</h2>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="autoPingCheckbox"> Enable Auto Ping
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Ping Interval (ms):</label>
+                    <input type="number" id="pingInterval" min="1000" max="30000" value="5000">
+                </div>
+                <div class="form-group">
+                    <label>Auto Message:</label>
+                    <input type="text" id="autoMessage" placeholder="Auto broadcast message">
+                </div>
+                <button class="btn success" id="startAutoTestBtn" disabled>Start Auto Test</button>
+                <button class="btn danger" id="stopAutoTestBtn" disabled>Stop Auto Test</button>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="card full-width">
+            <h2>📊 Connection Status</h2>
+            <div class="connection-grid" id="connectionGrid">
+                <div class="connection-item disconnected">
+                    <div>No connections</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Log -->
+        <div class="card full-width">
+            <h2>📝 Message Log</h2>
+            <div class="messages" id="messageLog">
+                <div class="message system">Welcome to WebSocket Testing Client!</div>
+            </div>
+        </div>
+
+        <!-- REST API Testing -->
+        <div class="api-section">
+            <h3>🔧 REST API Testing</h3>
+            <div class="api-endpoints">
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-url">/websocket</div>
+                    <button class="btn" onclick="testApi('GET', '/websocket')">Get Status</button>
+                </div>
+                <div class="endpoint">
+                    <div class="endpoint-method">GET</div>
+                    <div class="endpoint-url">/websocket/connections</div>
+                    <button class="btn" onclick="testApi('GET', '/websocket/connections')">Get Connections</button>
+                </div>
+                <div class="endpoint">
+                    <div class="endpoint-method">POST</div>
+                    <div class="endpoint-url">/websocket/broadcast</div>
+                    <button class="btn" onclick="testApi('POST', '/websocket/broadcast', {data: {message: 'Hello from API!'}})">Broadcast</button>
+                </div>
+                <div class="endpoint">
+                    <div class="endpoint-method">POST</div>
+                    <div class="endpoint-url">/websocket/disconnect-all</div>
+                    <button class="btn danger" onclick="testApi('POST', '/websocket/disconnect-all')">Disconnect All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let mainSocket = null;
+        let testConnections = [];
+        let messageCount = 0;
+        let autoTestInterval = null;
+
+        // DOM elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const pingBtn = document.getElementById('pingBtn');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const broadcastBtn = document.getElementById('broadcastBtn');
+        const createConnectionsBtn = document.getElementById('createConnectionsBtn');
+        const disconnectAllBtn = document.getElementById('disconnectAllBtn');
+        const pingAllBtn = document.getElementById('pingAllBtn');
+        const startAutoTestBtn = document.getElementById('startAutoTestBtn');
+        const stopAutoTestBtn = document.getElementById('stopAutoTestBtn');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateStats();
+        });
+
+        function setupEventListeners() {
+            connectBtn.addEventListener('click', connectMain);
+            disconnectBtn.addEventListener('click', disconnectMain);
+            pingBtn.addEventListener('click', sendPing);
+            sendMessageBtn.addEventListener('click', sendMessage);
+            broadcastBtn.addEventListener('click', sendBroadcast);
+            createConnectionsBtn.addEventListener('click', createMultipleConnections);
+            disconnectAllBtn.addEventListener('click', disconnectAllTest);
+            pingAllBtn.addEventListener('click', pingAllConnections);
+            startAutoTestBtn.addEventListener('click', startAutoTest);
+            stopAutoTestBtn.addEventListener('click', stopAutoTest);
+
+            // Enter key handlers
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+
+        function connectMain() {
+            if (mainSocket) return;
+
+            mainSocket = io('http://localhost:3000', {
+                transports: ['websocket', 'polling']
+            });
+
+            mainSocket.on('connect', function() {
+                updateMainStatus(true);
+                addMessage('System', 'Connected to WebSocket server', 'success');
+                document.getElementById('mainConnectionId').value = mainSocket.id;
+            });
+
+            mainSocket.on('disconnect', function() {
+                updateMainStatus(false);
+                addMessage('System', 'Disconnected from WebSocket server', 'error');
+                mainSocket = null;
+            });
+
+            mainSocket.on('welcome', function(data) {
+                addMessage('Server', `Welcome! Connection ID: ${data.connectionId}`, 'info');
+            });
+
+            mainSocket.on('userJoined', function(data) {
+                addMessage('System', `New user joined: ${data.connectionId}`, 'info');
+                updateStats();
+            });
+
+            mainSocket.on('userLeft', function(data) {
+                addMessage('System', `User left: ${data.connectionId}`, 'info');
+                updateStats();
+            });
+
+            mainSocket.on('broadcast', function(data) {
+                addMessage(`Broadcast from ${data.from}`, data.message, 'broadcast');
+            });
+
+            mainSocket.on('pong', function(data) {
+                addMessage('Server', `Pong received at ${new Date(data.timestamp).toLocaleTimeString()}`, 'info');
+            });
+        }
+
+        function disconnectMain() {
+            if (mainSocket) {
+                mainSocket.disconnect();
+            }
+        }
+
+        function updateMainStatus(connected) {
+            const statusDot = document.getElementById('mainStatus');
+            const statusText = document.getElementById('mainStatusText');
+            
+            if (connected) {
+                statusDot.className = 'status-dot connected';
+                statusText.textContent = 'Connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                pingBtn.disabled = false;
+                sendMessageBtn.disabled = false;
+                broadcastBtn.disabled = false;
+                startAutoTestBtn.disabled = false;
+            } else {
+                statusDot.className = 'status-dot disconnected';
+                statusText.textContent = 'Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                pingBtn.disabled = true;
+                sendMessageBtn.disabled = true;
+                broadcastBtn.disabled = true;
+                startAutoTestBtn.disabled = true;
+                stopAutoTest();
+            }
+        }
+
+        function sendPing() {
+            if (mainSocket) {
+                mainSocket.emit('ping', { timestamp: Date.now() });
+                addMessage('You', 'Ping sent', 'info');
+            }
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && mainSocket) {
+                mainSocket.emit('message', { message: message });
+                addMessage('You', message, 'message');
+                messageInput.value = '';
+            }
+        }
+
+        function sendBroadcast() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message && mainSocket) {
+                mainSocket.emit('broadcast', { message: message });
+                addMessage('You (Broadcast)', message, 'broadcast');
+                messageInput.value = '';
+            }
+        }
+
+        function createMultipleConnections() {
+            const count = parseInt(document.getElementById('connectionCountInput').value);
+            
+            // Disconnect existing test connections
+            disconnectAllTest();
+            
+            for (let i = 0; i < count; i++) {
+                const socket = io('http://localhost:3000', {
+                    transports: ['websocket', 'polling']
+                });
+
+                const connection = {
+                    id: `Test-${i + 1}`,
+                    socket: socket,
+                    isConnected: false
+                };
+
+                socket.on('connect', function() {
+                    connection.isConnected = true;
+                    updateConnectionGrid();
+                    updateStats();
+                });
+
+                socket.on('disconnect', function() {
+                    connection.isConnected = false;
+                    updateConnectionGrid();
+                    updateStats();
+                });
+
+                testConnections.push(connection);
+            }
+
+            disconnectAllBtn.disabled = false;
+            pingAllBtn.disabled = false;
+        }
+
+        function disconnectAllTest() {
+            testConnections.forEach(conn => {
+                if (conn.socket) {
+                    conn.socket.disconnect();
+                }
+            });
+            testConnections = [];
+            updateConnectionGrid();
+            updateStats();
+            disconnectAllBtn.disabled = true;
+            pingAllBtn.disabled = true;
+        }
+
+        function pingAllConnections() {
+            testConnections.forEach(conn => {
+                if (conn.isConnected && conn.socket) {
+                    conn.socket.emit('ping', { timestamp: Date.now() });
+                }
+            });
+            addMessage('System', `Ping sent to ${testConnections.length} connections`, 'info');
+        }
+
+        function startAutoTest() {
+            if (autoTestInterval) return;
+
+            const interval = parseInt(document.getElementById('pingInterval').value);
+            const message = document.getElementById('autoMessage').value;
+
+            autoTestInterval = setInterval(() => {
+                if (mainSocket) {
+                    mainSocket.emit('ping', { timestamp: Date.now() });
+                }
+                
+                if (message) {
+                    mainSocket.emit('broadcast', { message: message });
+                }
+
+                pingAllConnections();
+            }, interval);
+
+            startAutoTestBtn.disabled = true;
+            stopAutoTestBtn.disabled = false;
+            addMessage('System', 'Auto test started', 'success');
+        }
+
+        function stopAutoTest() {
+            if (autoTestInterval) {
+                clearInterval(autoTestInterval);
+                autoTestInterval = null;
+                startAutoTestBtn.disabled = false;
+                stopAutoTestBtn.disabled = true;
+                addMessage('System', 'Auto test stopped', 'info');
+            }
+        }
+
+        function updateConnectionGrid() {
+            const grid = document.getElementById('connectionGrid');
+            grid.innerHTML = '';
+
+            if (testConnections.length === 0) {
+                grid.innerHTML = '<div class="connection-item disconnected"><div>No connections</div></div>';
+                return;
+            }
+
+            testConnections.forEach(conn => {
+                const item = document.createElement('div');
+                item.className = `connection-item ${conn.isConnected ? 'connected' : 'disconnected'}`;
+                item.innerHTML = `
+                    <div><strong>${conn.id}</strong></div>
+                    <div>${conn.isConnected ? 'Connected' : 'Disconnected'}</div>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('connectionCount').textContent = testConnections.filter(c => c.isConnected).length;
+            document.getElementById('messageCount').textContent = messageCount;
+            document.getElementById('testConnections').textContent = testConnections.length;
+        }
+
+        function addMessage(sender, content, type) {
+            const messageLog = document.getElementById('messageLog');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            message.innerHTML = `<strong>${timestamp} - ${sender}:</strong> ${content}`;
+            
+            messageLog.appendChild(message);
+            messageLog.scrollTop = messageLog.scrollHeight;
+            
+            messageCount++;
+            updateStats();
+        }
+
+        async function testApi(method, endpoint, body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(`http://localhost:3000${endpoint}`, options);
+                const data = await response.json();
+
+                addMessage('API', `${method} ${endpoint}: ${JSON.stringify(data)}`, 'info');
+            } catch (error) {
+                addMessage('API Error', `${method} ${endpoint}: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-refresh stats
+        setInterval(updateStats, 2000);
+    </script>
+</body>
+</html> 
